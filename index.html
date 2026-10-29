@@ -1,0 +1,1181 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A0F15">
+<title>SUPER TV</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="SUPER TV — a remote-friendly home screen for Samsung TV browsers.">
+<style>
+/* Layout: 10-foot TV shell. Top bar, category tabs, then a vertically scrolling stage of
+   horizontal tile rows under a featured hero. All sizes in rem; 1rem = 1/120 of screen width
+   (16px at 1920, 32px at 3840), multiplied by the user's size setting. Single dark theme by design. */
+:root{
+  --ink:#0A0F15;        /* screen background, blue-black */
+  --panel:#121A23;      /* raised surfaces */
+  --panel-2:#1B2531;    /* controls */
+  --line:#2A3746;       /* hairlines */
+  --text:#EEF2F5;
+  --muted:#9DABB9;
+  --gold:#F3B94D;       /* focus + brand accent */
+  --gold-ink:#1C1405;
+  --ok:#62D9A0;
+  --bad:#FF8F80;
+  --display:'Bricolage Grotesque','Segoe UI',Roboto,system-ui,sans-serif;
+  --body:'Figtree',system-ui,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --arabic:'Amiri','Noto Naskh Arabic','Traditional Arabic','Times New Roman',serif;
+  --ui-scale:1;
+  --edge:3vw;
+  --speed:180ms;
+  color-scheme:dark;
+  font-size:calc(clamp(9px, 100vw / 120, 48px) * var(--ui-scale));
+}
+html,body{height:100%;background:var(--ink);color:var(--text)}
+body{font-family:var(--body);font-size:1.25rem;line-height:1.4;overflow:hidden;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button,a{font:inherit;color:inherit}
+svg{width:1em;height:1em;flex:none}
+.calm{--speed:0ms}
+@media (prefers-reduced-motion:reduce){:root{--speed:0ms}}
+
+/* ---------- shell ---------- */
+#app{height:100%;display:grid;grid-template-rows:auto auto 1fr auto;grid-template-columns:minmax(0,1fr);
+  padding-left:max(16px,var(--edge),env(safe-area-inset-left,0px));
+  padding-right:max(16px,var(--edge),env(safe-area-inset-right,0px));
+  padding-block:calc(var(--edge) * .55) 0;
+  background:
+    radial-gradient(60rem 30rem at 85% -10%, rgba(243,185,77,.10), transparent 60%),
+    radial-gradient(50rem 40rem at -10% 110%, rgba(64,140,190,.12), transparent 60%),
+    var(--ink)}
+.top{display:flex;align-items:center;gap:2rem;min-height:4.5rem}
+.brand{display:flex;align-items:center;gap:.7rem;font-family:var(--display);font-weight:800;font-size:2.1rem;letter-spacing:-.02em;white-space:nowrap}
+.brand b{background:var(--gold);color:var(--gold-ink);border-radius:.45rem;padding:.05rem .45rem;font-weight:800}
+.greet{color:var(--muted);font-size:1.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:1.4rem}
+.net{display:flex;align-items:center;gap:.5rem;font-size:1.1rem;color:var(--muted);white-space:nowrap}
+.net .dot{width:.7rem;height:.7rem;border-radius:50%;background:var(--ok)}
+.net.off .dot{background:var(--bad)}
+.net.off{color:var(--bad)}
+.clock{text-align:right;line-height:1.1}
+.clock .t{font-family:var(--display);font-weight:600;font-size:2.2rem;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.clock .d{color:var(--muted);font-size:1.05rem}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:3.4rem;min-width:3.4rem;padding:0 1rem;border-radius:1.7rem;background:var(--panel-2);border:0;font-size:1.15rem;cursor:pointer}
+.icon-btn svg{font-size:1.5rem}
+
+.tabs{display:flex;gap:.6rem;padding:1.1rem .4rem 1rem;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar,.sx::-webkit-scrollbar,.sy::-webkit-scrollbar{display:none}
+.tab{flex:none;display:inline-flex;align-items:center;gap:.55rem;padding:.6rem 1.25rem;border-radius:2rem;border:0;background:transparent;color:var(--muted);font-size:1.25rem;font-weight:500;cursor:pointer;white-space:nowrap}
+.tab svg{font-size:1.25rem}
+.tab[aria-current="page"]{background:var(--text);color:var(--ink);font-weight:700}
+
+#main{overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding:.4rem .4rem 4rem;min-height:0}
+.hints{display:flex;gap:2.2rem;align-items:center;justify-content:flex-end;padding:.7rem .4rem calc(var(--edge) * .4);color:var(--muted);font-size:1.05rem;flex-wrap:wrap}
+.hints kbd{font:inherit;font-weight:700;color:var(--text);background:var(--panel-2);border-radius:.35rem;padding:.05rem .5rem;margin-right:.4rem}
+.hints .red{display:inline-block;width:.9rem;height:.9rem;border-radius:50%;background:#E5484D;margin-right:.45rem;vertical-align:-.1rem}
+
+/* ---------- focus: the single most important visual ---------- */
+.f{outline:none;transition:transform var(--speed) ease, box-shadow var(--speed) ease, background-color var(--speed)}
+.f:focus{box-shadow:0 0 0 .28rem var(--ink),0 0 0 .58rem var(--gold),0 .8rem 2.4rem rgba(0,0,0,.55);position:relative;z-index:2}
+.tab.f:focus,.icon-btn.f:focus,.btn.f:focus,.opt.f:focus,.mini.f:focus{background:var(--gold);color:var(--gold-ink)}
+
+/* ---------- hero ---------- */
+.hero{position:relative;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);min-height:23rem;border-radius:1.6rem;overflow:hidden;
+  background:linear-gradient(115deg,hsl(var(--h),55%,13%) 0%,hsl(var(--h),60%,20%) 45%,hsl(calc(var(--h) + 30),65%,30%) 100%);
+  margin-bottom:2.2rem}
+.hero-copy{position:relative;z-index:1;padding:2.6rem 3rem;display:flex;flex-direction:column;gap:.9rem;justify-content:center;min-width:0}
+.kicker{font-size:1.05rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.hero h1{margin:0;font-family:var(--display);font-weight:800;font-size:4.2rem;line-height:.98;letter-spacing:-.03em;text-wrap:balance}
+.hero p{margin:0;max-width:34rem;font-size:1.4rem;color:#D6DEE6}
+.hero-actions{display:flex;gap:1rem;flex-wrap:wrap;margin-top:.8rem}
+.btn{display:inline-flex;align-items:center;gap:.6rem;padding:.85rem 1.6rem;border-radius:2rem;border:0;background:rgba(255,255,255,.12);font-size:1.3rem;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn svg{font-size:1.3rem}
+.btn.primary{background:var(--text);color:var(--ink)}
+.hero-meta{font-size:1rem;color:#B9C6D2;display:flex;gap:1.2rem;flex-wrap:wrap}
+.hero-art{position:relative;overflow:hidden}
+.art{position:absolute;inset:0}
+.art.geo{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23F3B94D' stroke-opacity='.35' stroke-width='1.2'%3E%3Crect x='20' y='20' width='40' height='40'/%3E%3Crect x='20' y='20' width='40' height='40' transform='rotate(45 40 40)'/%3E%3Ccircle cx='40' cy='40' r='9'/%3E%3Cpath d='M0 0L20 20M80 0L60 20M0 80L20 60M80 80L60 60'/%3E%3C/g%3E%3C/svg%3E");background-size:6rem 6rem;-webkit-mask-image:linear-gradient(90deg,transparent,#000 40%);mask-image:linear-gradient(90deg,transparent,#000 40%)}
+.art.stars{background:
+  radial-gradient(circle at 70% 55%, hsl(calc(var(--h) + 30),70%,62%) 0 7rem, transparent 7.1rem),
+  radial-gradient(circle at 70% 55%, rgba(255,255,255,.08) 0 10rem, transparent 10.1rem),
+  radial-gradient(1px 1px at 10% 20%,#fff 50%,transparent 51%),radial-gradient(1.5px 1.5px at 30% 70%,#fff 50%,transparent 51%),
+  radial-gradient(1px 1px at 45% 35%,#fff 50%,transparent 51%),radial-gradient(1.5px 1.5px at 88% 15%,#fff 50%,transparent 51%),
+  radial-gradient(1px 1px at 92% 82%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 20% 90%,#fff 50%,transparent 51%),
+  radial-gradient(1.5px 1.5px at 55% 8%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 38% 52%,#fff 50%,transparent 51%)}
+.art.grid{background-image:linear-gradient(rgba(255,255,255,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.09) 1px,transparent 1px);background-size:3rem 3rem;-webkit-mask-image:radial-gradient(circle at 65% 50%,#000,transparent 75%);mask-image:radial-gradient(circle at 65% 50%,#000,transparent 75%)}
+.art.waves{background:repeating-radial-gradient(circle at 110% 50%, transparent 0 1.6rem, rgba(255,255,255,.07) 1.6rem 1.8rem)}
+.art-word{position:absolute;right:3rem;bottom:2rem;left:1rem;text-align:right;font-family:var(--display);font-weight:800;font-size:9rem;line-height:.85;color:rgba(255,255,255,.12);letter-spacing:-.04em;white-space:nowrap;overflow:hidden}
+.art-word.ar{font-family:var(--arabic);font-weight:700;font-size:7.5rem;color:var(--gold);opacity:.9;line-height:1.3;bottom:3rem}
+.art-glyph{position:absolute;right:4rem;top:50%;transform:translateY(-50%);font-size:11rem;color:rgba(255,255,255,.85)}
+.dots{position:absolute;left:3rem;bottom:1.4rem;display:flex;gap:.5rem;z-index:1}
+.dots i{width:.6rem;height:.6rem;border-radius:50%;background:rgba(255,255,255,.3)}
+.dots i.on{background:var(--gold);width:1.8rem;border-radius:.3rem}
+
+/* ---------- rows & tiles ---------- */
+.sec{margin-bottom:1.6rem}
+.sec-head{display:flex;align-items:baseline;gap:1.2rem;padding:0 .4rem;flex-wrap:wrap}
+.sec-head h2{margin:0;font-family:var(--display);font-weight:600;font-size:2rem;letter-spacing:-.015em}
+.sec-head .ar{font-family:var(--arabic);font-size:1.7rem;color:var(--gold)}
+.sec-note{color:var(--muted);font-size:1.05rem}
+.row{display:flex;gap:1.4rem;overflow-x:auto;overflow-y:hidden;padding:1.1rem .9rem 1.5rem;scrollbar-width:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(16rem,1fr));gap:1.6rem;padding:1.1rem .9rem 1.5rem}
+.tile{flex:none;position:relative;width:16rem;aspect-ratio:16/10;border-radius:1.1rem;padding:1.1rem 1.2rem;display:flex;flex-direction:column;text-decoration:none;cursor:pointer;overflow:hidden;
+  background:linear-gradient(140deg,hsl(var(--h),68%,46%) 0%,hsl(calc(var(--h) + 35),62%,26%) 100%)}
+.grid .tile{width:auto}
+.tile::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,rgba(0,0,0,.45));pointer-events:none}
+.tile>*{position:relative;z-index:1}
+.tile:focus{transform:scale(1.07)}
+.tile-top{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+.tile-ico{width:2.8rem;height:2.8rem;border-radius:50%;background:rgba(0,0,0,.22);display:grid;place-items:center;font-size:1.5rem}
+.badge{font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.2rem .55rem;border-radius:.35rem;background:rgba(0,0,0,.3);color:#fff;white-space:nowrap}
+.badge.app{background:rgba(255,255,255,.88);color:#1A2230}
+.tile-ar{font-family:var(--arabic);font-weight:700;font-size:1.6rem;line-height:1.2;margin-top:auto;text-align:right;color:#FFE7B5}
+.tile-name{margin-top:auto;font-family:var(--display);font-weight:600;font-size:1.55rem;line-height:1.1;letter-spacing:-.01em;text-wrap:balance}
+.tile-ar+.tile-name{margin-top:.2rem}
+.tile-sub{font-size:1rem;color:rgba(255,255,255,.78);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.2rem}
+.tile-fav{position:absolute;right:1rem;bottom:1rem;color:var(--gold);font-size:1.4rem;z-index:1}
+.tile.add{background:transparent;border:.18rem dashed var(--line);align-items:center;justify-content:center;gap:.6rem;color:var(--muted)}
+.tile.add::after{display:none}
+.tile.add svg{font-size:2.6rem}
+.tile.add .tile-name{margin:0;font-size:1.3rem}
+.empty{padding:2rem .9rem;color:var(--muted);font-size:1.3rem;display:flex;flex-direction:column;gap:1rem;align-items:flex-start}
+
+/* ---------- overlays ---------- */
+.layer{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(5,8,12,.82);
+  padding:max(16px,var(--edge)) max(16px,var(--edge),env(safe-area-inset-right,0px)) max(16px,var(--edge)) max(16px,var(--edge),env(safe-area-inset-left,0px))}
+.dialog{width:min(48rem,100%);max-height:100%;overflow-y:auto;scrollbar-width:none;background:var(--panel);border:1px solid var(--line);border-radius:1.4rem;padding:2.2rem 2.4rem;display:flex;flex-direction:column;gap:1.1rem}
+.dialog h2{margin:0;font-family:var(--display);font-weight:800;font-size:2.4rem;letter-spacing:-.02em;text-wrap:balance}
+.dialog p{margin:0;color:#CFD8E1;font-size:1.3rem;max-width:42rem}
+.dialog .actions{display:flex;gap:1rem;flex-wrap:wrap;margin-top:.6rem}
+.dialog .btn{background:var(--panel-2)}
+.dialog .btn.primary{background:var(--text);color:var(--ink)}
+.steps{margin:0;padding-left:1.6rem;font-size:1.25rem;color:#CFD8E1;display:grid;gap:.3rem}
+.sheet{width:min(84rem,100%);height:100%}
+.sheet .dialog{width:100%;height:100%;max-height:none}
+.sheet-head{display:flex;align-items:center;gap:1rem;justify-content:space-between;flex-wrap:wrap}
+.set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(30rem,100%),1fr));gap:1.2rem 2.4rem}
+.set{display:flex;flex-direction:column;gap:.6rem;padding:1.2rem 0;border-top:1px solid var(--line);min-width:0}
+.set h3{margin:0;font-size:1.3rem;font-weight:700}
+.set .help{color:var(--muted);font-size:1.05rem}
+.seg{display:flex;gap:.6rem;flex-wrap:wrap}
+.opt{border:0;border-radius:.8rem;padding:.6rem 1.1rem;background:var(--panel-2);font-size:1.15rem;cursor:pointer;white-space:nowrap}
+.opt[aria-pressed="true"]{background:#2E4157;box-shadow:inset 0 0 0 .15rem var(--text);font-weight:700}
+.opt.swatch{width:3.2rem;height:3.2rem;padding:0;border-radius:50%;background:linear-gradient(140deg,hsl(var(--h),68%,46%),hsl(calc(var(--h) + 35),62%,26%))}
+.opt.swatch[aria-pressed="true"]{box-shadow:inset 0 0 0 .25rem #fff}
+.list{display:flex;flex-direction:column;gap:.35rem}
+.li{display:flex;align-items:center;gap:.8rem;padding:.45rem .7rem;border-radius:.7rem;background:rgba(255,255,255,.03);flex-wrap:wrap}
+.li .nm{flex:1 1 12rem;min-width:0;font-size:1.15rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .nm small{color:var(--muted);font-size:.95rem;margin-left:.5rem}
+.li.dim .nm{opacity:.45;text-decoration:line-through}
+.mini{border:0;border-radius:.6rem;padding:.4rem .8rem;background:var(--panel-2);font-size:1rem;cursor:pointer;white-space:nowrap}
+.field{display:flex;flex-direction:column;gap:.35rem;border-radius:.8rem;padding:.2rem;cursor:text}
+.field label{font-size:1.05rem;color:var(--muted);font-weight:500}
+.field input,.field textarea{width:100%;font:inherit;font-size:1.3rem;color:var(--text);background:var(--ink);border:.12rem solid var(--line);border-radius:.7rem;padding:.7rem .9rem}
+.field textarea{min-height:7rem;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.95rem;resize:none}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--gold)}
+.err{color:var(--bad);font-size:1.1rem;min-height:1.5rem;margin:0}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:.5rem 1.4rem;font-size:1.2rem;margin:0}
+.keys dt{font-weight:700;white-space:nowrap}
+.keys dd{margin:0;color:#CFD8E1}
+.tag{display:inline-block;font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.15rem .5rem;border-radius:.3rem;vertical-align:.15rem;margin-right:.4rem}
+.tag.real{background:var(--ok);color:#06210F}
+.tag.guide{background:#fff;color:#1A2230}
+.tag.no{background:var(--bad);color:#2A0702}
+.help-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(30rem,100%),1fr));gap:1.4rem 2.4rem}
+.help-cols section{display:flex;flex-direction:column;gap:.6rem;min-width:0}
+.help-cols h3{margin:0;font-size:1.4rem}
+.help-cols ul{margin:0;padding-left:1.4rem;display:grid;gap:.35rem;font-size:1.15rem;color:#CFD8E1}
+
+/* first launch */
+.welcome{position:fixed;inset:0;z-index:60;display:grid;place-items:center;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23F3B94D' stroke-opacity='.10' stroke-width='1'%3E%3Crect x='20' y='20' width='40' height='40'/%3E%3Crect x='20' y='20' width='40' height='40' transform='rotate(45 40 40)'/%3E%3Ccircle cx='40' cy='40' r='9'/%3E%3C/g%3E%3C/svg%3E") 0 0/7rem 7rem,
+    radial-gradient(60rem 40rem at 50% 40%, #16304A, var(--ink) 70%);
+  padding:max(16px,var(--edge)) max(16px,var(--edge),env(safe-area-inset-right,0px)) max(16px,var(--edge)) max(16px,var(--edge),env(safe-area-inset-left,0px))}
+.welcome-card{max-width:62rem;display:flex;flex-direction:column;gap:1.4rem;align-items:flex-start}
+.welcome .mark{font-family:var(--display);font-weight:800;font-size:8rem;letter-spacing:-.045em;line-height:.9}
+.welcome .mark b{background:var(--gold);color:var(--gold-ink);border-radius:1.2rem;padding:0 1.6rem;margin-left:.6rem}
+.welcome .lede{font-size:1.7rem;color:#D6DEE6;max-width:50rem;margin:0}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.4rem;width:100%;margin:.6rem 0}
+.facts div{background:rgba(18,26,35,.85);border:1px solid var(--line);border-radius:1rem;padding:1.2rem 1.3rem;font-size:1.15rem;color:#CFD8E1}
+.facts strong{display:block;color:var(--text);font-size:1.3rem;margin-bottom:.3rem}
+
+.toast{position:fixed;left:50%;bottom:calc(var(--edge) + 4rem);transform:translateX(-50%);z-index:80;background:var(--text);color:var(--ink);font-weight:700;font-size:1.25rem;padding:.8rem 1.6rem;border-radius:2rem;box-shadow:0 1rem 3rem rgba(0,0,0,.5);max-width:90vw;text-align:center}
+.offline-bar{background:var(--bad);color:#2A0702;font-weight:700;border-radius:.8rem;padding:.6rem 1.2rem;margin:0 .4rem 1rem;font-size:1.15rem}
+
+/* narrow screens (phones, small windows) */
+@media (max-width:760px){
+  :root{font-size:calc(11px * var(--ui-scale))}
+  .greet,.net span:not(.dot),.hints,.icon-btn span,.clock .d{display:none}
+  .top{gap:1rem}.top-right{gap:.8rem}.brand{font-size:1.8rem}
+  .hero{grid-template-columns:1fr}
+  .hero-art{position:absolute;inset:0;opacity:.5}
+  .hero-copy{padding:2rem 1.6rem}
+  .hero h1{font-size:3rem}
+  .facts{grid-template-columns:1fr}
+  .welcome .mark{font-size:5rem}
+  .art-word{font-size:6rem}
+}
+</style>
+<style>
+@font-face{font-family:'Figtree';src:url('fonts/figtree.woff') format('woff');font-weight:300 900;font-display:swap}
+@font-face{font-family:'Bricolage Grotesque';src:url('fonts/bricolage.woff') format('woff');font-weight:200 800;font-display:swap}
+@font-face{font-family:'Amiri';src:url('fonts/amiri-bold.woff') format('woff');font-weight:700;font-display:swap}
+</style>
+<style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style>
+</head>
+<body>
+
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.2 6.8.8-5 4.6 1.4 6.7L12 17.4l-6.1 3.4 1.4-6.7-5-4.6 6.8-.8z" fill="currentColor"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7.5 4v16M16.5 4v16M3 12h18"/></g></symbol>
+    <symbol id="i-cap" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3.5 2.2 8.5 2.2 12 0v-5"/></g></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z" fill="currentColor"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3.2 3.2 3.2 14.8 0 18M12 3c-3.2 3.2-3.2 14.8 0 18"/></g></symbol>
+    <symbol id="i-kids" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="10" r="2.4"/><path d="M3.5 20c0-3.4 2.4-5.4 5.5-5.4s5.5 2 5.5 5.4M15 15.2c3 0 5.5 1.6 5.5 4.8"/></g></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 6c-2-1.6-5-2-8-1.6V19c3-.4 6 0 8 1.6 2-1.6 5-2 8-1.6V4.4C17 4 14 4.4 12 6z"/><path d="M12 6v14.6"/></g></symbol>
+    <symbol id="i-tv" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8.5 21h7"/></g></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M3.8 7.2l2.6 1.5M17.6 15.3l2.6 1.5M3.8 16.8l2.6-1.5M17.6 8.7l2.6-1.5"/></g></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .9-1 1.6v.6"/></g><circle cx="12" cy="17.2" r="1.1" fill="currentColor"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.5 11L12 4l8.5 7v9h-5.5v-6h-6v6H3.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></g></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div id="app">
+  <header class="top">
+    <div class="brand" aria-label="SUPER TV">SUPER <b>TV</b></div>
+    <div class="greet" id="greet"></div>
+    <div class="top-right">
+      <div class="net" id="net" role="status"><span class="dot"></span><span id="netText">Online</span></div>
+      <div class="clock"><div class="t" id="clockT">--:--</div><div class="d" id="clockD"></div></div>
+      <button class="icon-btn f" data-act="help" data-fid="top:help" data-group="top" aria-label="Help"><svg><use href="#i-help"/></svg></button>
+      <button class="icon-btn f" data-act="settings" data-fid="top:settings" data-group="top" aria-label="Settings"><svg><use href="#i-gear"/></svg><span>Settings</span></button>
+    </div>
+  </header>
+  <nav class="tabs sx" id="tabs" aria-label="Categories"></nav>
+  <main id="main" class="sy" tabindex="-1"></main>
+  <div class="hints" aria-hidden="true">
+    <span><kbd>OK</kbd>Open</span>
+    <span><span class="red"></span>Add / remove favourite</span>
+    <span><kbd>Back</kbd>Close · Home</span>
+  </div>
+</div>
+<div id="layers"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= DATA ================= */
+  var CATS = [
+    { id: 'fav',   name: 'Favourites',        icon: 'star' },
+    { id: 'ent',   name: 'Entertainment',     icon: 'film' },
+    { id: 'yt',    name: 'YouTube',           icon: 'play' },
+    { id: 'edu',   name: 'Education',         icon: 'cap' },
+    { id: 'isl',   name: 'Islamic Content',   icon: 'moon' },
+    { id: 'quran', name: "Qur'an Recitation", icon: 'wave', ar: 'تلاوة' },
+    { id: 'doc',   name: 'Documentaries',     icon: 'globe' },
+    { id: 'fam',   name: 'Family',            icon: 'kids' }
+  ];
+
+  // kind: 'web' opens a real website. 'app' is a guide tile for an app installed on the TV
+  // (a web page cannot launch TV apps, so these explain how to open them instead).
+  var BASE = [
+    { id: 'yt-home', cat: 'ent', kind: 'web', name: 'YouTube', url: 'https://www.youtube.com/', hue: 0, icon: 'play' },
+    { id: 'archive-films', cat: 'ent', kind: 'web', name: 'Classic Films', sub: 'Internet Archive · public domain', url: 'https://archive.org/details/feature_films', hue: 28, icon: 'film' },
+    { id: 'tvplus', match: 'tv plus', cat: 'ent', kind: 'app', name: 'Samsung TV Plus', sub: 'Free channels · built into your TV', hue: 210, icon: 'tv', note: 'Samsung TV Plus is free and already on your TV.' },
+    { id: 'iplayer', match: 'iplayer', cat: 'ent', kind: 'app', name: 'BBC iPlayer', sub: 'TV app · TV licence needed', hue: 330, icon: 'tv', note: 'BBC iPlayer requires a TV licence for live and on-demand BBC programmes.' },
+    { id: 'itvx', match: 'itvx', cat: 'ent', kind: 'app', name: 'ITVX', sub: 'TV app · free with ads', hue: 290, icon: 'tv' },
+    { id: 'netflix', match: 'netflix', cat: 'ent', kind: 'app', name: 'Netflix', sub: 'TV app · if you subscribe', hue: 355, icon: 'tv' },
+    { id: 'prime', match: 'prime video', cat: 'ent', kind: 'app', name: 'Prime Video', sub: 'TV app · if you subscribe', hue: 200, icon: 'tv' },
+
+    { id: 'yt-main', cat: 'yt', kind: 'web', name: 'YouTube Home', url: 'https://www.youtube.com/', hue: 0, icon: 'play' },
+    { id: 'yt-app', match: 'youtube', cat: 'yt', kind: 'app', name: 'YouTube TV app', sub: 'Smoothest playback', hue: 8, icon: 'tv', note: 'The installed YouTube app plays video more smoothly than the browser and works fully with your remote.' },
+    { id: 'yt-nature', cat: 'yt', kind: 'web', name: 'Nature in 4K', sub: 'YouTube search', url: 'https://www.youtube.com/results?search_query=nature+4k', hue: 140, icon: 'search' },
+    { id: 'yt-lectures', cat: 'yt', kind: 'web', name: 'Islamic Lectures', sub: 'YouTube search', url: 'https://www.youtube.com/results?search_query=islamic+lectures', hue: 165, icon: 'search' },
+    { id: 'yt-recipes', cat: 'yt', kind: 'web', name: 'Easy Recipes', sub: 'YouTube search', url: 'https://www.youtube.com/results?search_query=easy+recipes', hue: 30, icon: 'search' },
+    { id: 'yt-science', cat: 'yt', kind: 'web', name: 'Science Explained', sub: 'YouTube search', url: 'https://www.youtube.com/results?search_query=science+explained', hue: 220, icon: 'search' },
+
+    { id: 'khan', cat: 'edu', kind: 'web', name: 'Khan Academy', url: 'https://www.khanacademy.org/', hue: 150, icon: 'cap' },
+    { id: 'bitesize', cat: 'edu', kind: 'web', name: 'BBC Bitesize', url: 'https://www.bbc.co.uk/bitesize', hue: 270, icon: 'book' },
+    { id: 'ted', cat: 'edu', kind: 'web', name: 'TED Talks', url: 'https://www.ted.com/talks', hue: 352, icon: 'play' },
+    { id: 'wiki', cat: 'edu', kind: 'web', name: 'Wikipedia', url: 'https://en.wikipedia.org/', hue: 210, icon: 'book' },
+    { id: 'nasa', cat: 'edu', kind: 'web', name: 'NASA', url: 'https://www.nasa.gov/', hue: 225, icon: 'globe' },
+    { id: 'duolingo', cat: 'edu', kind: 'web', name: 'Duolingo', sub: 'Language lessons', url: 'https://www.duolingo.com/', hue: 95, icon: 'cap' },
+
+    { id: 'sunnah', cat: 'isl', kind: 'web', name: 'Sunnah.com', ar: 'السنة', url: 'https://sunnah.com/', hue: 160, icon: 'book' },
+    { id: 'islamicfinder', cat: 'isl', kind: 'web', name: 'Prayer Times', sub: 'IslamicFinder', url: 'https://www.islamicfinder.org/', hue: 190, icon: 'moon' },
+    { id: 'yaqeen', cat: 'isl', kind: 'web', name: 'Yaqeen Institute', url: 'https://yaqeeninstitute.org/', hue: 175, icon: 'book' },
+    { id: 'yt-seerah', cat: 'isl', kind: 'web', name: 'Seerah Series', sub: 'YouTube search', url: 'https://www.youtube.com/results?search_query=seerah+series', hue: 140, icon: 'search' },
+
+    { id: 'quran-com', cat: 'quran', kind: 'web', name: 'Quran.com', ar: 'القرآن الكريم', url: 'https://quran.com/', hue: 155, icon: 'book' },
+    { id: 'quranicaudio', cat: 'quran', kind: 'web', name: 'QuranicAudio', ar: 'تلاوات', url: 'https://quranicaudio.com/', hue: 38, icon: 'wave' },
+    { id: 'mp3quran', cat: 'quran', kind: 'web', name: 'MP3 Quran', ar: 'مصحف', url: 'https://mp3quran.net/eng', hue: 185, icon: 'wave' },
+    { id: 'quran-radio', cat: 'quran', kind: 'web', name: 'Quran Radio', sub: 'quran.com/radio', url: 'https://quran.com/radio', hue: 140, icon: 'wave' },
+    { id: 'yt-recitation', cat: 'quran', kind: 'web', name: 'Recitation Videos', sub: 'YouTube search', url: 'https://www.youtube.com/results?search_query=quran+recitation', hue: 20, icon: 'search' },
+
+    { id: 'nasa-plus', cat: 'doc', kind: 'web', name: 'NASA+', sub: 'Free space documentaries', url: 'https://plus.nasa.gov/', hue: 230, icon: 'globe' },
+    { id: 'dw-doc', cat: 'doc', kind: 'web', name: 'DW Documentary', sub: 'YouTube channel', url: 'https://www.youtube.com/@DWDocumentary', hue: 205, icon: 'film' },
+    { id: 'bbc-earth', cat: 'doc', kind: 'web', name: 'BBC Earth', sub: 'YouTube channel', url: 'https://www.youtube.com/@bbcearth', hue: 120, icon: 'globe' },
+    { id: 'archive-docs', cat: 'doc', kind: 'web', name: 'Archive Documentaries', sub: 'Internet Archive', url: 'https://archive.org/search?query=documentary', hue: 32, icon: 'film' },
+
+    { id: 'ytkids', cat: 'fam', kind: 'web', name: 'YouTube Kids', url: 'https://www.youtubekids.com/', hue: 12, icon: 'kids' },
+    { id: 'cbeebies', cat: 'fam', kind: 'web', name: 'CBeebies', sub: 'Games & clips', url: 'https://www.bbc.co.uk/cbeebies', hue: 48, icon: 'kids' },
+    { id: 'natgeokids', cat: 'fam', kind: 'web', name: 'Nat Geo Kids', url: 'https://www.natgeokids.com/uk/', hue: 52, icon: 'globe' },
+    { id: 'bitesize-fam', cat: 'fam', kind: 'web', name: 'Bitesize for families', sub: 'BBC Bitesize', url: 'https://www.bbc.co.uk/bitesize', hue: 260, icon: 'book' }
+  ];
+
+  var FEATURE_COPY = {
+    'quran-com': { kicker: "Qur'an Recitation", title: 'Listen, read and reflect', blurb: 'Choose a reciter and follow the text with translation on Quran.com. Free, no account needed.', art: 'geo', word: 'القرآن الكريم', ar: true },
+    'nasa-plus': { kicker: 'Documentaries', title: 'Space, explored on NASA+', blurb: 'Free documentaries and live coverage from NASA. No subscription, no ads.', art: 'stars', word: 'NASA+' },
+    'khan':      { kicker: 'Education', title: 'Learn anything with Khan Academy', blurb: 'Free maths, science and history lessons for every age. Great on a big screen with the family.', art: 'grid', word: 'Σ π √' },
+    'ytkids':    { kicker: 'Family', title: 'YouTube Kids for little ones', blurb: 'A simpler YouTube made for children. For the best playback, use the installed YouTube app.', art: 'waves', glyph: 'play' }
+  };
+  var ROTATION = ['quran-com', 'nasa-plus', 'khan', 'ytkids'];
+  var SWATCH_HUES = [0, 30, 52, 140, 175, 210, 260, 320];
+
+  /* ================= STATE & STORAGE ================= */
+  var KEY = 'supertv.v1';
+  var DEFAULTS = {
+    v: 1, firstRunDone: false,
+    favs: ['yt-home', 'quran-com', 'bitesize', 'nasa-plus'], favsSample: true,
+    hidden: [], catHidden: [], catOrder: CATS.map(function (c) { return c.id; }),
+    custom: [], featured: 'rotate', featIdx: 0,
+    clock24: true, scale: 1, edge: 3, motion: true, linkTarget: 'self',
+    view: 'home', lastFocus: null
+  };
+  var store = (function () {
+    var ok = false, mem = null;
+    try { localStorage.setItem('__stv', '1'); localStorage.removeItem('__stv'); ok = true; } catch (e) {}
+    return {
+      ok: ok,
+      get: function () { if (!ok) return mem; try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } },
+      set: function (v) { if (!ok) { mem = v; return; } try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} }
+    };
+  })();
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  var state = Object.assign(clone(DEFAULTS), sanitise(store.get() || {}));
+  CATS.forEach(function (c) { if (state.catOrder.indexOf(c.id) < 0) state.catOrder.push(c.id); });
+  function save() { store.set(state); }
+
+  function sanitise(o) {
+    var out = {};
+    if (!o || typeof o !== 'object') return out;
+    var arrKeys = ['favs', 'hidden', 'catHidden', 'catOrder'];
+    arrKeys.forEach(function (k) { if (Array.isArray(o[k])) out[k] = o[k].filter(function (x) { return typeof x === 'string'; }); });
+    if (Array.isArray(o.custom)) out.custom = o.custom.filter(validCustom).map(function (c) {
+      return { id: c.id, cat: c.cat, kind: 'web', name: String(c.name).slice(0, 40), url: c.url, hue: Number(c.hue) || 0, icon: 'link', custom: true };
+    });
+    ['firstRunDone', 'favsSample', 'clock24', 'motion'].forEach(function (k) { if (typeof o[k] === 'boolean') out[k] = o[k]; });
+    if (typeof o.featured === 'string') out.featured = o.featured;
+    if (typeof o.featIdx === 'number') out.featIdx = o.featIdx;
+    if ([0.9, 1, 1.1, 1.25].indexOf(o.scale) >= 0) out.scale = o.scale;
+    if ([0, 3, 5].indexOf(o.edge) >= 0) out.edge = o.edge;
+    if (o.linkTarget === 'self' || o.linkTarget === 'new') out.linkTarget = o.linkTarget;
+    if (typeof o.view === 'string') out.view = o.view;
+    if (typeof o.lastFocus === 'string') out.lastFocus = o.lastFocus;
+    return out;
+  }
+  function validCustom(c) {
+    return c && typeof c.id === 'string' && typeof c.name === 'string' && c.name.trim() &&
+      typeof c.url === 'string' && /^https?:\/\//i.test(c.url) && CATS.some(function (k) { return k.id === c.cat && k.id !== 'fav'; });
+  }
+
+  /* ================= HELPERS ================= */
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function allItems() { return BASE.concat(state.custom); }
+  function byId(id) { var a = allItems(); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
+  function catById(id) { for (var i = 0; i < CATS.length; i++) if (CATS[i].id === id) return CATS[i]; return null; }
+  function host(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return ''; } }
+  function isFav(id) { return state.favs.indexOf(id) >= 0; }
+  function itemsFor(cat) {
+    if (cat === 'fav') return state.favs.map(byId).filter(Boolean);
+    return allItems().filter(function (i) { return i.cat === cat && state.hidden.indexOf(i.id) < 0; });
+  }
+  function visibleCats() { return state.catOrder.map(catById).filter(function (c) { return c && state.catHidden.indexOf(c.id) < 0; }); }
+  var framed = (function () { try { return window.top !== window.self; } catch (e) { return true; } })();
+  // True when running as an installed Samsung TV app (Tizen), not in a browser.
+  var TIZEN = (function () { try { return !!(window.tizen && tizen.application); } catch (e) { return false; } })();
+  if (TIZEN) framed = false;
+  function linkTarget() { return framed || state.linkTarget === 'new' ? '_blank' : '_self'; }
+  function icon(n) { return '<svg aria-hidden="true"><use href="#i-' + n + '"/></svg>'; }
+
+  /* ================= RENDER ================= */
+  function tileHTML(it, group) {
+    var web = it.kind === 'web';
+    var attrs = web ? 'href="' + esc(it.url) + '" target="' + linkTarget() + '" rel="noopener"' : 'href="#" role="button"';
+    var sub = it.sub || (web ? host(it.url) : 'Installed TV app');
+    return '<a class="tile f" ' + attrs + ' data-act="open" data-arg="' + esc(it.id) + '" data-group="' + group + '" data-fid="' + group + ':' + esc(it.id) + '" style="--h:' + (+it.hue || 0) + '"' +
+      ' aria-label="' + esc(it.name + (web ? ', website' : ', TV app guide') + (isFav(it.id) ? ', favourite' : '')) + '">' +
+      '<span class="tile-top"><span class="tile-ico">' + icon(it.icon || 'link') + '</span><span class="badge ' + (web ? 'web' : 'app') + '">' + (web ? 'Website' : 'TV app') + '</span></span>' +
+      (it.ar ? '<span class="tile-ar" lang="ar" dir="rtl">' + esc(it.ar) + '</span>' : '') +
+      '<span class="tile-name">' + esc(it.name) + '</span>' +
+      '<span class="tile-sub">' + esc(sub) + '</span>' +
+      (isFav(it.id) ? '<span class="tile-fav">' + icon('star') + '</span>' : '') +
+      '</a>';
+  }
+
+  function featuredItem() {
+    if (state.featured !== 'rotate') { var p = byId(state.featured); if (p && p.kind === 'web') return p; }
+    return byId(ROTATION[((state.featIdx % ROTATION.length) + ROTATION.length) % ROTATION.length]);
+  }
+  function featureCopy(it) {
+    if (FEATURE_COPY[it.id]) return FEATURE_COPY[it.id];
+    var c = catById(it.cat) || { name: 'Featured' };
+    var art = { quran: 'geo', isl: 'geo', doc: 'stars', edu: 'grid' }[it.cat] || 'waves';
+    return { kicker: c.name, title: it.name, blurb: 'Opens ' + (host(it.url) || 'this website') + ' in your TV browser.', art: art, word: it.ar || it.name, ar: !!it.ar };
+  }
+
+  function heroHTML() {
+    var it = featuredItem(); var fc = featureCopy(it);
+    var rotate = state.featured === 'rotate';
+    var dots = rotate ? '<div class="dots" aria-hidden="true">' + ROTATION.map(function (id, i) { return '<i class="' + (i === state.featIdx % ROTATION.length ? 'on' : '') + '"></i>'; }).join('') + '</div>' : '';
+    var art = '<div class="art ' + fc.art + '"></div>' +
+      (fc.glyph ? '<div class="art-glyph">' + icon(fc.glyph) + '</div>' :
+        '<div class="art-word' + (fc.ar ? ' ar" lang="ar" dir="rtl' : '') + '">' + esc(fc.word || '') + '</div>');
+    return '<section class="hero" style="--h:' + (+it.hue || 0) + '" aria-label="Featured">' +
+      '<div class="hero-copy">' +
+        '<div class="kicker">' + esc(fc.kicker) + '</div>' +
+        '<h1>' + esc(fc.title) + '</h1>' +
+        '<p>' + esc(fc.blurb) + '</p>' +
+        '<div class="hero-actions">' +
+          '<a class="btn primary f" href="' + esc(it.url) + '" target="' + linkTarget() + '" rel="noopener" data-act="open" data-arg="' + esc(it.id) + '" data-group="hero" data-fid="hero:open">' + icon('play') + 'Open ' + esc(it.name) + '</a>' +
+          '<button class="btn f" data-act="fav" data-arg="' + esc(it.id) + '" data-group="hero" data-fid="hero:fav">' + icon('star') + (isFav(it.id) ? 'In Favourites' : 'Add to Favourites') + '</button>' +
+          (rotate ? '<button class="btn f" data-act="next-feature" data-group="hero" data-fid="hero:next">Next' + icon('next') + '</button>' : '') +
+        '</div>' +
+        '<div class="hero-meta"><span>Website · ' + esc(host(it.url)) + '</span><span>Change this in Settings</span></div>' +
+      '</div>' +
+      '<div class="hero-art" aria-hidden="true">' + art + '</div>' + dots +
+    '</section>';
+  }
+
+  function sectionHTML(c, items, asGrid) {
+    var note = '';
+    if (c.id === 'fav' && state.favsSample) note = 'Sample set — replace with your own using the red button or Settings';
+    else if (items.some(function (i) { return i.kind === 'app'; })) note = 'Website tiles open the site · TV app tiles show how to open the installed app';
+    var body;
+    if (!items.length && c.id === 'fav') {
+      body = '<div class="empty"><span>No favourites yet. Highlight any tile and press the red button (or F on a keyboard) to add it here.</span>' +
+        '<button class="btn f" data-act="view" data-arg="home" data-group="sec-' + c.id + '" data-fid="empty:home">' + icon('home') + 'Back to Home</button></div>';
+    } else {
+      var tiles = items.map(function (i) { return tileHTML(i, 'sec-' + c.id); }).join('');
+      if (asGrid && c.id !== 'fav') tiles += '<button class="tile add f" data-act="add-link" data-arg="' + c.id + '" data-group="sec-' + c.id + '" data-fid="sec-' + c.id + ':add">' + icon('plus') + '<span class="tile-name">Add a website</span></button>';
+      body = '<div class="' + (asGrid ? 'grid' : 'row sx') + '">' + tiles + '</div>';
+    }
+    return '<section class="sec" aria-label="' + esc(c.name) + '"><div class="sec-head"><h2>' + esc(c.name) + '</h2>' +
+      (c.ar ? '<span class="ar" lang="ar" dir="rtl">' + c.ar + '</span>' : '') +
+      (note ? '<span class="sec-note">' + note + '</span>' : '') + '</div>' + body + '</section>';
+  }
+
+  function renderTabs() {
+    var tabs = [{ id: 'home', name: 'Home', icon: 'home' }].concat(visibleCats());
+    $('#tabs').innerHTML = tabs.map(function (t) {
+      return '<button class="tab f" data-act="view" data-arg="' + t.id + '" data-group="tabs" data-fid="tab:' + t.id + '"' + (state.view === t.id ? ' aria-current="page"' : '') + '>' + icon(t.icon) + esc(t.name) + '</button>';
+    }).join('');
+  }
+
+  function renderMain() {
+    var main = $('#main'); var html = '';
+    if (!navigator.onLine) html += '<div class="offline-bar" role="alert">You are offline. Websites will not open until the TV reconnects to Wi-Fi.</div>';
+    if (state.view === 'home') {
+      html += heroHTML();
+      visibleCats().forEach(function (c) {
+        var items = itemsFor(c.id);
+        if (items.length || c.id === 'fav') html += sectionHTML(c, items, false);
+      });
+    } else {
+      var c = catById(state.view);
+      if (!c || state.catHidden.indexOf(c.id) >= 0) { state.view = 'home'; return renderMain(); }
+      html += sectionHTML(c, itemsFor(c.id), true);
+    }
+    main.innerHTML = html;
+    main._tt = 0;
+  }
+
+  function render(keepFid) {
+    var fid = keepFid || currentFid();
+    renderTabs(); renderMain();
+    if (fid) restoreFocus(fid);
+  }
+
+  /* ================= FOCUS ENGINE (spatial navigation) ================= */
+  var memory = {};
+  var layers = [];
+  function activeRoot() { return layers.length ? layers[layers.length - 1].el : $('#app'); }
+  function focusables() {
+    return Array.prototype.filter.call(activeRoot().querySelectorAll('.f'), function (el) {
+      return !el.disabled && el.offsetParent !== null && el.getClientRects().length;
+    });
+  }
+  function currentF() {
+    var a = document.activeElement; if (!a) return null;
+    var f = a.classList && a.classList.contains('f') ? a : (a.closest ? a.closest('.f') : null);
+    return f && activeRoot().contains(f) ? f : null;
+  }
+  function currentFid() { var c = currentF(); return c ? c.getAttribute('data-fid') : null; }
+  function restoreFocus(fid) {
+    var el = fid && activeRoot().querySelector('[data-fid="' + cssEsc(fid) + '"]');
+    if (!el && fid) {
+      var g = fid.split(':')[0];
+      el = activeRoot().querySelector('[data-group="' + cssEsc(g) + '"]') || activeRoot().querySelector('[data-group^="' + cssEsc(g.split('-')[0]) + '"]');
+    }
+    if (!el) el = defaultFocus();
+    if (el) setFocus(el, true);
+  }
+  function cssEsc(s) { return String(s).replace(/["\\]/g, '\\$&'); }
+  function defaultFocus() {
+    var r = activeRoot();
+    return r.querySelector('[data-autofocus]') || r.querySelector('#main .f') || focusables()[0] || null;
+  }
+  function setFocus(el, instant) {
+    if (!el) return;
+    try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); }
+    var g = el.getAttribute('data-group'); if (g) memory[g] = el.getAttribute('data-fid');
+    reveal(el, instant);
+  }
+  function behaviour(instant) { return instant || !state.motion || document.documentElement.classList.contains('calm') ? 'auto' : 'smooth'; }
+  // Smooth scrolls take time; remember where each container is heading so geometry stays correct
+  // when the remote is pressed again mid-scroll.
+  function scrollC(c, opts) {
+    if ('left' in opts) { opts.left = Math.max(0, Math.min(opts.left, c.scrollWidth - c.clientWidth)); c._tx = opts.left; }
+    if ('top' in opts) { opts.top = Math.max(0, Math.min(opts.top, c.scrollHeight - c.clientHeight)); c._ty = opts.top; }
+    c._tt = Date.now();
+    if (c.scrollTo) { try { c.scrollTo(opts); return; } catch (e) {} }
+    if ('left' in opts) c.scrollLeft = opts.left; if ('top' in opts) c.scrollTop = opts.top;
+  }
+  function fresh(c) { return c._tt && Date.now() - c._tt < 900; }
+  function targetX(c) { return fresh(c) && c._tx != null ? c._tx : c.scrollLeft; }
+  function targetY(c) { return fresh(c) && c._ty != null ? c._ty : c.scrollTop; }
+  function rectOf(el) {
+    var r = el.getBoundingClientRect(), dx = 0, dy = 0, p = el.parentElement;
+    while (p && p !== document.body) {
+      if (fresh(p)) { dx += p.scrollLeft - targetX(p); dy += p.scrollTop - targetY(p); }
+      p = p.parentElement;
+    }
+    return { left: r.left + dx, right: r.right + dx, top: r.top + dy, bottom: r.bottom + dy, width: r.width, height: r.height };
+  }
+  function scrollerOf(el) { var p = el.parentElement; while (p && p !== document.body) { if (p.classList.contains('sy') || p.classList.contains('dialog')) return p; p = p.parentElement; } return null; }
+  function reveal(el, instant) {
+    var b = behaviour(instant);
+    var p = el.parentElement;
+    while (p && p !== document.body) {
+      var cr = rectOf(p);
+      if (p.classList.contains('sx')) {
+        var er = rectOf(el), pad = Math.min(cr.width * 0.08, 120), d = 0;
+        if (er.left < cr.left + pad) d = er.left - cr.left - pad;
+        else if (er.right > cr.right - pad) d = er.right - cr.right + pad;
+        if (d) scrollC(p, { left: targetX(p) + d, behavior: b });
+      }
+      if (p.classList.contains('sy') || p.classList.contains('dialog')) {
+        if (el.closest('.hero')) { scrollC(p, { top: 0, behavior: b }); }
+        else {
+          var tgt = el.closest('.sec');
+          if (!tgt || tgt.getBoundingClientRect().height > cr.height * 0.85) tgt = el;
+          var tr = rectOf(tgt), vp = Math.min(cr.height * 0.06, 60), dy = 0;
+          if (tr.top < cr.top + vp) dy = tr.top - cr.top - vp;
+          else if (tr.bottom > cr.bottom - vp) dy = tr.bottom - cr.bottom + vp;
+          if (dy) scrollC(p, { top: targetY(p) + dy, behavior: b });
+        }
+      }
+      p = p.parentElement;
+    }
+  }
+  function move(dir) {
+    var cur = currentF();
+    if (!cur) { setFocus(memoryEl() || defaultFocus()); return; }
+    var r = rectOf(cur), home = scrollerOf(cur);
+    var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    var horiz = dir === 'left' || dir === 'right';
+    var cands = [];
+    focusables().forEach(function (c) {
+      if (c === cur) return;
+      var q = rectOf(c);
+      var qx = q.left + q.width / 2, qy = q.top + q.height / 2;
+      var primary, ortho;
+      if (dir === 'right') { if (qx <= cx + 2 || q.right <= r.right - 1) return; primary = Math.max(0, q.left - r.right); ortho = gap(q.top, q.bottom, r.top, r.bottom); }
+      else if (dir === 'left') { if (qx >= cx - 2 || q.left >= r.left + 1) return; primary = Math.max(0, r.left - q.right); ortho = gap(q.top, q.bottom, r.top, r.bottom); }
+      else if (dir === 'down') { if (qy <= cy + 2 || q.bottom <= r.bottom - 1) return; primary = Math.max(0, q.top - r.bottom); ortho = gap(q.left, q.right, r.left, r.right); }
+      else { if (qy >= cy - 2 || q.top >= r.top + 1) return; primary = Math.max(0, r.top - q.bottom); ortho = gap(q.left, q.right, r.left, r.right); }
+      // Sideways moves stay on the same line when there is anything on it.
+      if (horiz && ortho > 0) return;
+      cands.push({ same: scrollerOf(c) === home, el: c, primary: primary, ortho: ortho, off: horiz ? Math.abs(qy - cy) : Math.abs(qx - cx) });
+    });
+    if (!cands.length) return;
+    // Stay inside the current scrolling area (e.g. Home rows → featured banner) before leaving it.
+    if (home && cands.some(function (c) { return c.same; })) cands = cands.filter(function (c) { return c.same; });
+    // Up/down: only consider the nearest row in that direction, then pick the best-aligned item in it.
+    var minP = Math.min.apply(null, cands.map(function (c) { return c.primary; }));
+    var band = horiz ? cands : cands.filter(function (c) { return c.primary <= minP + Math.max(24, r.height * 0.5); });
+    var best = null, bestScore = Infinity;
+    band.forEach(function (c) {
+      var score = horiz ? c.primary + c.ortho * 4 + c.off * 0.15 : c.ortho * 2 + c.off * 0.5 + c.primary;
+      if (score < bestScore) { bestScore = score; best = c.el; }
+    });
+    if (!best) return;
+    // From the category tabs, Down always lands at the start of the page content.
+    if (dir === 'down' && cur.getAttribute('data-group') === 'tabs' && !layers.length) {
+      var first = $('#main .f'); if (first) { setFocus(first); return; }
+    }
+    // Returning to a row restores the tile you last used there.
+    var g = best.getAttribute('data-group');
+    if (g && g !== cur.getAttribute('data-group') && memory[g] && (dir === 'up' || dir === 'down')) {
+      var m = activeRoot().querySelector('[data-fid="' + cssEsc(memory[g]) + '"]');
+      if (m && m.offsetParent !== null) best = m;
+    }
+    setFocus(best);
+  }
+  function gap(a1, a2, b1, b2) { return a2 < b1 ? b1 - a2 : (b2 < a1 ? a1 - b2 : 0); }
+  function memoryEl() { return null; }
+
+  /* ================= LAYERS (dialogs) ================= */
+  function openLayer(html, cls) {
+    var wrap = document.createElement('div');
+    wrap.className = cls === 'welcome' ? 'welcome' : 'layer' + (cls ? ' ' + cls : '');
+    wrap.setAttribute('role', 'dialog'); wrap.setAttribute('aria-modal', 'true');
+    wrap.innerHTML = html;
+    $('#layers').appendChild(wrap);
+    layers.push({ el: wrap, back: currentFid() });
+    var lbl = wrap.querySelector('h2'); if (lbl) { lbl.id = 'dlg' + layers.length; wrap.setAttribute('aria-labelledby', lbl.id); }
+    setFocus(defaultFocus(), true);
+    return wrap;
+  }
+  function closeLayer() {
+    var l = layers.pop(); if (!l) return;
+    l.el.parentNode.removeChild(l.el);
+    restoreFocus(l.back);
+  }
+  function rerenderLayer(html) {
+    var l = layers[layers.length - 1]; if (!l) return;
+    var fid = currentFid();
+    var dlg = l.el.querySelector('.dialog'); var st = dlg ? dlg.scrollTop : 0;
+    l.el.innerHTML = html;
+    var nd = l.el.querySelector('.dialog'); if (nd) nd.scrollTop = st;
+    restoreFocus(fid);
+  }
+
+  /* ================= DIALOG CONTENT ================= */
+  function welcomeHTML() {
+    return '<div class="welcome-card">' +
+      '<div class="mark" aria-label="SUPER TV">SUPER<b>TV</b></div>' +
+      '<p class="lede">A calm, remote-friendly home screen for your Samsung TV' + (TIZEN ? '' : ' browser') + '. Everything here opens real, free websites. Nothing is faked.</p>' +
+      '<div class="facts">' +
+        '<div><strong>Arrows + OK</strong>Move around and open tiles. Back closes things and returns Home.</div>' +
+        '<div><strong>Website or TV app</strong>Website tiles open the site. TV app tiles explain how to open the installed app.</div>' +
+        '<div><strong>Make it yours</strong>Favourites, your own websites, categories and the featured area live in Settings.</div>' +
+      '</div>' +
+      '<div class="actions" style="display:flex;gap:1rem;flex-wrap:wrap">' +
+        '<button class="btn primary f" data-act="start" data-fid="w:start" data-autofocus>' + icon('play') + 'Start SUPER TV</button>' +
+        '<button class="btn f" data-act="start-help" data-fid="w:help">' + icon('help') + 'How it works</button>' +
+      '</div></div>';
+  }
+
+  function helpHTML() {
+    return '<div class="dialog"><div class="sheet-head"><h2>How SUPER TV works</h2>' +
+      '<button class="btn primary f" data-act="close" data-fid="h:close" data-autofocus>Close</button></div>' +
+      '<div class="help-cols">' +
+      '<section><h3>Remote control</h3><dl class="keys">' +
+        '<dt>Arrow keys</dt><dd>Move the gold highlight</dd>' +
+        '<dt>OK / Enter</dt><dd>Open the highlighted item</dd>' +
+        '<dt>Back / Return</dt><dd>Close a panel, then go to Home</dd>' +
+        '<dt>Red button</dt><dd>Add or remove a favourite (F on a keyboard)</dd>' +
+        '<dt>Green button</dt><dd>Settings (S)</dd>' +
+        '<dt>Yellow button</dt><dd>This help screen (H)</dd>' +
+        '<dt>Blue button</dt><dd>Jump to Home</dd>' +
+        '<dt>Play / Pause</dt><dd>Open the highlighted item, where the browser passes the key on</dd>' +
+      '</dl><p class="help" style="color:var(--muted);font-size:1.05rem">Every action also has an on-screen button, so colour and media keys are optional. If the TV shows a mouse pointer instead of the gold highlight, point and press OK; both work.</p></section>' +
+      '<section><h3>What is real</h3><ul>' +
+        '<li><span class="tag real">Real</span>Website tiles open that real site' + (TIZEN ? ' in the TV\'s Internet app.' : ' in this browser.') + '</li>' +
+        '<li><span class="tag real">Real</span>Clock and date come from your TV.</li>' +
+        '<li><span class="tag real">Real</span>Online / Offline is what the browser reports. Browsers cannot read Wi-Fi signal strength.</li>' +
+        '<li><span class="tag real">Real</span>Your settings are saved in this TV browser\'s storage' + (store.ok ? '.' : ' — <strong>storage is blocked here, so changes last until you close the page.</strong>') + '</li>' +
+        (TIZEN
+          ? '<li><span class="tag real">Real</span>TV app tiles (Netflix, iPlayer, TV Plus) start the installed app when your TV allows it; otherwise they show how to open it.</li>'
+          : '<li><span class="tag guide">Guide</span>TV app tiles (Netflix, iPlayer, TV Plus) explain how to open the installed app. A web page cannot launch TV apps.</li>') +
+        '<li><span class="tag guide">Sample</span>The starting favourites are a sample set for you to replace.</li>' +
+      '</ul></section>' +
+      '<section><h3>' + (TIZEN ? 'What SUPER TV cannot do' : 'What a web page cannot do') + '</h3><ul>' +
+        '<li><span class="tag no">No</span>Replace Samsung\'s Smart Hub' + (TIZEN ? ' (it can reopen at power-on if Autorun Last App is on)' : ' or start automatically when the TV turns on') + '</li>' +
+        '<li><span class="tag no">No</span>Change volume, inputs, picture settings or firmware</li>' +
+        (TIZEN ? '<li><span class="tag no">No</span>Install or remove TV apps</li>' : '<li><span class="tag no">No</span>Open, install or remove TV apps</li>') +
+        '<li><span class="tag no">No</span>Show live TV channels or bypass any subscription</li>' +
+      '</ul></section>' +
+      '<section><h3>Quick tips for this TV</h3><ul>' +
+        (TIZEN
+          ? '<li>Move SUPER TV to the front of the apps bar: highlight it, press down, choose Move.</li>'
+          : '<li>Bookmark this page in the Internet app so it is two presses away.</li>' +
+            '<li>Move the Internet app to the front of the apps bar: highlight it, press down, choose Move.</li>') +
+        '<li>Text too small or edges cut off? Settings › Text size and Screen edges.</li>' +
+        '<li>For long videos, the installed YouTube app plays more smoothly than the browser.</li>' +
+      '</ul></section>' +
+      '</div></div>';
+  }
+
+  function opt(key, val, label, cur) {
+    return '<button class="opt f" data-act="set" data-arg="' + key + '=' + val + '" data-fid="s:' + key + '=' + val + '" aria-pressed="' + (String(cur) === String(val)) + '">' + label + '</button>';
+  }
+  function settingsHTML() {
+    var webItems = allItems().filter(function (i) { return i.kind === 'web'; });
+    var seen = {};
+    var featOpts = opt('featured', 'rotate', 'Rotate highlights', state.featured) +
+      webItems.filter(function (i) { if (seen[i.url]) return false; seen[i.url] = 1; return true; })
+        .map(function (i) { return opt('featured', i.id, esc(i.name), state.featured); }).join('');
+    var catRows = state.catOrder.map(catById).filter(Boolean).map(function (c, idx, arr) {
+      var hid = state.catHidden.indexOf(c.id) >= 0;
+      return '<div class="li' + (hid ? ' dim' : '') + '"><span class="nm">' + esc(c.name) + '<small>' + itemsFor(c.id).length + ' tiles</small></span>' +
+        '<button class="mini f" data-act="cat-toggle" data-arg="' + c.id + '" data-fid="cat:t:' + c.id + '">' + (hid ? 'Show' : 'Hide') + '</button>' +
+        '<button class="mini f" data-act="cat-up" data-arg="' + c.id + '" data-fid="cat:u:' + c.id + '"' + (idx === 0 ? ' disabled' : '') + ' aria-label="Move ' + esc(c.name) + ' up">Move up</button>' +
+        '<button class="mini f" data-act="cat-down" data-arg="' + c.id + '" data-fid="cat:d:' + c.id + '"' + (idx === arr.length - 1 ? ' disabled' : '') + ' aria-label="Move ' + esc(c.name) + ' down">Move down</button></div>';
+    }).join('');
+    var tileRows = allItems().map(function (i) {
+      var hid = state.hidden.indexOf(i.id) >= 0;
+      return '<div class="li' + (hid ? ' dim' : '') + '"><span class="nm">' + esc(i.name) + '<small>' + esc((catById(i.cat) || {}).name || '') + (i.custom ? ' · yours' : '') + '</small></span>' +
+        '<button class="mini f" data-act="fav" data-arg="' + i.id + '" data-fid="t:f:' + i.id + '">' + (isFav(i.id) ? '★ Favourite' : '☆ Favourite') + '</button>' +
+        '<button class="mini f" data-act="hide" data-arg="' + i.id + '" data-fid="t:h:' + i.id + '">' + (hid ? 'Show' : 'Hide') + '</button>' +
+        (i.custom ? '<button class="mini f" data-act="remove" data-arg="' + i.id + '" data-fid="t:r:' + i.id + '">Remove</button>' : '') + '</div>';
+    }).join('');
+    return '<div class="dialog"><div class="sheet-head"><h2>Settings</h2>' +
+      '<div class="seg"><button class="btn f" data-act="add-link" data-arg="ent" data-fid="s:add">' + icon('plus') + 'Add a website</button>' +
+      '<button class="btn primary f" data-act="close" data-fid="s:close" data-autofocus>Done</button></div></div>' +
+      '<div class="set-grid">' +
+        '<div class="set"><h3>Text and tile size</h3><span class="help">Make everything bigger if you sit far from the screen.</span><div class="seg">' +
+          opt('scale', 0.9, 'Smaller', state.scale) + opt('scale', 1, 'Standard', state.scale) + opt('scale', 1.1, 'Large', state.scale) + opt('scale', 1.25, 'Extra large', state.scale) + '</div></div>' +
+        '<div class="set"><h3>Screen edges</h3><span class="help">If the clock or tiles are cut off at the edges, add a margin.</span><div class="seg">' +
+          opt('edge', 0, 'None', state.edge) + opt('edge', 3, 'Standard', state.edge) + opt('edge', 5, 'Wide', state.edge) + '</div></div>' +
+        '<div class="set"><h3>Clock</h3><div class="seg">' + opt('clock24', true, '24-hour', state.clock24) + opt('clock24', false, '12-hour', state.clock24) + '</div></div>' +
+        '<div class="set"><h3>Animations</h3><span class="help">Reduced makes navigation instant, useful if the TV feels slow.</span><div class="seg">' +
+          opt('motion', true, 'Smooth', state.motion) + opt('motion', false, 'Reduced', state.motion) + '</div></div>' +
+        (TIZEN
+          ? '<div class="set"><h3>Websites</h3><span class="help">Websites open in the TV\'s Internet app. To come back, press Home and choose SUPER TV.</span></div>'
+          : '<div class="set"><h3>Open websites</h3><span class="help">' + (framed ? 'This preview always opens websites in a new tab.' : 'Same tab works best on a TV: press Back to return here.') + '</span><div class="seg">' +
+            opt('linkTarget', 'self', 'In the same tab', state.linkTarget) + opt('linkTarget', 'new', 'In a new tab', state.linkTarget) + '</div></div>') +
+        '<div class="set"><h3>Backup</h3><span class="help">Copy your setup to another TV or browser.</span><div class="seg">' +
+          '<button class="opt f" data-act="export" data-fid="s:export">Show backup code</button>' +
+          '<button class="opt f" data-act="import" data-fid="s:import">Restore from code</button>' +
+          '<button class="opt f" data-act="reset" data-fid="s:reset">Reset everything</button></div></div>' +
+      '</div>' +
+      '<div class="set"><h3>Featured area</h3><span class="help">Pick what the big banner on Home shows.</span><div class="seg">' + featOpts + '</div></div>' +
+      '<div class="set"><h3>Categories</h3><span class="help">Hide the ones you don\'t use and set their order on Home.</span><div class="list">' + catRows + '</div></div>' +
+      '<div class="set"><h3>Tiles</h3><span class="help">Favourite, hide or remove tiles. Websites you added are marked “yours”.</span><div class="list">' + tileRows + '</div></div>' +
+    '</div>';
+  }
+
+  var form = null;
+  function addLinkHTML() {
+    var cats = CATS.filter(function (c) { return c.id !== 'fav'; });
+    return '<div class="dialog"><h2>Add a website</h2>' +
+      '<p>It will appear as a tile in the category you choose. Typing on a TV is slow: the SmartThings app on your Galaxy phone can act as a keyboard.</p>' +
+      fieldHTML('name', 'Name on the tile', form.name, 'text', 'e.g. Local mosque timetable', true) +
+      fieldHTML('url', 'Web address', form.url, 'url', 'e.g. example.org') +
+      '<div class="set" style="border:0;padding:0"><h3>Category</h3><div class="seg">' +
+        cats.map(function (c) { return '<button class="opt f" data-act="form-cat" data-arg="' + c.id + '" data-fid="fc:' + c.id + '" aria-pressed="' + (form.cat === c.id) + '">' + esc(c.name) + '</button>'; }).join('') + '</div></div>' +
+      '<div class="set" style="border:0;padding:0"><h3>Colour</h3><div class="seg">' +
+        SWATCH_HUES.map(function (h) { return '<button class="opt swatch f" style="--h:' + h + '" data-act="form-hue" data-arg="' + h + '" data-fid="fh:' + h + '" aria-pressed="' + (form.hue === h) + '" aria-label="Colour ' + h + '"></button>'; }).join('') + '</div></div>' +
+      '<p class="err" id="formErr" role="alert">' + esc(form.err || '') + '</p>' +
+      '<div class="actions"><button class="btn primary f" data-act="form-save" data-fid="f:save">Save website</button><button class="btn f" data-act="close" data-fid="f:cancel">Cancel</button></div></div>';
+  }
+  function fieldHTML(key, label, val, type, ph, auto) {
+    return '<div class="field f" data-act="field" data-fid="fld:' + key + '" tabindex="0"' + (auto ? ' data-autofocus' : '') + '>' +
+      '<label for="in-' + key + '">' + label + ' <span style="opacity:.7">— press OK to type</span></label>' +
+      '<input id="in-' + key + '" name="' + key + '" type="' + type + '" value="' + esc(val || '') + '" placeholder="' + esc(ph) + '" autocomplete="off" autocapitalize="off" spellcheck="false" tabindex="-1"></div>';
+  }
+
+  /* ================= ACTIONS ================= */
+  function toast(msg) {
+    var t = $('#toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 2600);
+  }
+  function infoDialog(title, paras, buttons) {
+    var html = '<div class="dialog"><h2>' + esc(title) + '</h2>' + paras + '<div class="actions">' + buttons + '</div></div>';
+    openLayer(html);
+  }
+  function appDialog(it) {
+    infoDialog(TIZEN ? 'Open ' + it.name + ' from Home' : it.name + ' is a TV app',
+      '<p>' + (it.note ? esc(it.note) + ' ' : '') + (TIZEN
+        ? 'SUPER TV could not open ' + esc(it.name) + ' directly. Either it is not installed, or your TV did not allow another app to start it.'
+        : 'Web pages cannot open apps installed on the TV, so SUPER TV shows you the way instead.') + '</p>' +
+      '<ol class="steps"><li>Press the <strong>Home</strong> button on your remote.</li><li>Move along the apps bar to <strong>' + esc(it.name) + '</strong> and press OK.</li>' +
+      '<li>Not there? Open <strong>Apps</strong>, search for it and install it (free to install; some services need a subscription).</li>' +
+      '<li>To come back, ' + (TIZEN ? 'press <strong>Home</strong> and choose <strong>SUPER TV</strong>.' : 'open the <strong>Internet</strong> app and choose your SUPER TV bookmark.') + '</li></ol>',
+      '<button class="btn primary f" data-act="close" data-fid="d:ok" data-autofocus>Got it</button>');
+  }
+  var pendingOpen = null;
+  function offlineDialog(it) {
+    pendingOpen = it;
+    infoDialog('No internet connection',
+      '<p>' + esc(it.name) + ' needs the internet, and the browser reports that the TV is offline.</p>' +
+      '<ol class="steps"><li>Check your router is on.</li><li>On the TV: Settings › All Settings › Connection › Network › Network Status (names vary slightly by software version).</li><li>Then choose Try again.</li></ol>',
+      '<button class="btn primary f" data-act="retry-open" data-fid="d:retry" data-autofocus>Try again</button><button class="btn f" data-act="close" data-fid="d:cancel">Cancel</button>');
+  }
+  // Installed-app mode: hand websites to the TV's own Internet app.
+  function openInBrowser(it) {
+    state.lastFocus = currentFid(); save();
+    toast('Opening ' + it.name + ' in the Internet app…');
+    var fail = function () {
+      infoDialog('The Internet app did not open',
+        '<p>Open the <strong>Internet</strong> app from Home and go to this address:</p><p><strong>' + esc(it.url) + '</strong></p>',
+        '<button class="btn primary f" data-act="close" data-fid="d:ok" data-autofocus>OK</button>');
+    };
+    try {
+      var ac = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/view', it.url, null, null, null);
+      tizen.application.launchAppControl(ac, null, function () {}, function () {
+        try { tizen.application.launchAppControl(ac, 'org.tizen.browser', function () {}, fail); } catch (e) { fail(); }
+      });
+    } catch (e) { fail(); }
+  }
+  // Installed-app mode: find an installed TV app by name and start it; fall back to the how-to guide.
+  function launchTvApp(it) {
+    var want = (it.match || it.name).toLowerCase();
+    var fail = function () { appDialog(it); };
+    try {
+      tizen.application.getAppsInfo(function (list) {
+        var hit = null, i, n;
+        for (i = 0; i < list.length && !hit; i++) { n = String(list[i].name || '').toLowerCase(); if (n === want) hit = list[i]; }
+        for (i = 0; i < list.length && !hit; i++) { n = String(list[i].name || '').toLowerCase(); if (n.indexOf(want) === 0) hit = list[i]; }
+        for (i = 0; i < list.length && !hit; i++) { n = String(list[i].name || '').toLowerCase(); if (n.indexOf(want) >= 0 && n.indexOf('kids') < 0) hit = list[i]; }
+        if (!hit) { fail(); return; }
+        state.lastFocus = currentFid(); save();
+        toast('Opening ' + it.name + '…');
+        try { tizen.application.launch(hit.id, function () {}, fail); } catch (e) { fail(); }
+      }, fail);
+    } catch (e) { fail(); }
+  }
+  function navigateTo(it) {
+    if (TIZEN) { openInBrowser(it); return; }
+    state.lastFocus = currentFid(); save();
+    var a = document.createElement('a'); a.href = it.url; a.target = linkTarget(); a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.parentNode.removeChild(a);
+  }
+  function toggleFav(id) {
+    var it = byId(id); if (!it) return;
+    var i = state.favs.indexOf(id);
+    if (i >= 0) state.favs.splice(i, 1); else state.favs.push(id);
+    state.favsSample = false; save();
+    toast(i >= 0 ? 'Removed ' + it.name + ' from Favourites' : 'Added ' + it.name + ' to Favourites');
+  }
+  function setView(v, focusTab) {
+    state.view = v; save();
+    var main = $('#main'); main.scrollTop = 0; main._tt = 0;
+    render(focusTab ? 'tab:' + v : null);
+  }
+  function refreshAll() {
+    render();
+    if (layers.length && layers[layers.length - 1].kind === 'settings') rerenderLayer(settingsHTML());
+  }
+  function applyPrefs() {
+    var de = document.documentElement;
+    de.style.setProperty('--ui-scale', state.scale);
+    de.style.setProperty('--edge', state.edge + 'vw');
+    de.classList.toggle('calm', !state.motion);
+  }
+  function openSettings() {
+    if (layers.length && layers[layers.length - 1].kind === 'settings') return;
+    while (layers.length) closeLayer();
+    openLayer(settingsHTML(), 'sheet');
+    layers[layers.length - 1].kind = 'settings';
+  }
+  function openHelp() {
+    if (layers.length && layers[layers.length - 1].kind === 'help') return;
+    openLayer(helpHTML(), 'sheet'); layers[layers.length - 1].kind = 'help';
+  }
+  function exportCode() {
+    var data = { favs: state.favs, hidden: state.hidden, catHidden: state.catHidden, catOrder: state.catOrder, custom: state.custom, featured: state.featured, clock24: state.clock24, scale: state.scale, edge: state.edge, motion: state.motion, linkTarget: state.linkTarget, favsSample: state.favsSample };
+    return JSON.stringify(data);
+  }
+
+  var actions = {
+    open: function (arg, el, e) {
+      var it = byId(arg);
+      if (!it) { e.preventDefault(); return; }
+      if (it.kind === 'app') { e.preventDefault(); if (TIZEN) launchTvApp(it); else appDialog(it); return; }
+      if (!navigator.onLine) { e.preventDefault(); offlineDialog(it); return; }
+      if (TIZEN) { e.preventDefault(); openInBrowser(it); return; }
+      state.lastFocus = el.getAttribute('data-fid'); save();
+      toast('Opening ' + it.name + '…');
+      return 'default'; // let the real link navigate
+    },
+    view: function (arg) { setView(arg, true); },
+    fav: function (arg) { toggleFav(arg); refreshAll(); },
+    'next-feature': function () { state.featIdx = (state.featIdx + 1) % ROTATION.length; save(); render('hero:next'); },
+    settings: openSettings,
+    help: openHelp,
+    close: closeLayer,
+    start: function () { state.firstRunDone = true; save(); closeLayer(); setFocus(defaultFocus(), true); },
+    'start-help': function () { state.firstRunDone = true; save(); closeLayer(); openHelp(); },
+    'retry-open': function () {
+      if (!navigator.onLine) { toast('Still offline. Check the TV\'s network settings.'); return; }
+      var it = pendingOpen; closeLayer(); if (it) navigateTo(it);
+    },
+    set: function (arg) {
+      var kv = arg.split('='), k = kv[0], v = kv[1];
+      if (k === 'scale' || k === 'edge') v = Number(v);
+      else if (k === 'clock24' || k === 'motion') v = v === 'true';
+      state[k] = v; save(); applyPrefs(); tick(true);
+      if (k === 'featured') toast(v === 'rotate' ? 'Featured area will rotate highlights' : 'Featured: ' + (byId(v) || {}).name);
+      refreshAll();
+    },
+    'cat-toggle': function (id) {
+      var i = state.catHidden.indexOf(id);
+      if (i >= 0) state.catHidden.splice(i, 1); else state.catHidden.push(id);
+      if (state.view === id) state.view = 'home';
+      save(); refreshAll();
+    },
+    'cat-up': function (id) { moveCat(id, -1); },
+    'cat-down': function (id) { moveCat(id, 1); },
+    hide: function (id) {
+      var i = state.hidden.indexOf(id);
+      if (i >= 0) state.hidden.splice(i, 1); else state.hidden.push(id);
+      save(); refreshAll();
+    },
+    remove: function (id) {
+      var it = byId(id);
+      state.custom = state.custom.filter(function (c) { return c.id !== id; });
+      state.favs = state.favs.filter(function (f) { return f !== id; });
+      if (state.featured === id) state.featured = 'rotate';
+      save(); refreshAll(); if (it) toast('Removed ' + it.name);
+    },
+    'add-link': function (cat) {
+      form = { name: '', url: '', cat: cat && cat !== 'fav' ? cat : 'ent', hue: 210, err: '' };
+      openLayer(addLinkHTML()); layers[layers.length - 1].kind = 'form';
+    },
+    'form-cat': function (c) { syncForm(); form.cat = c; rerenderLayer(addLinkHTML()); },
+    'form-hue': function (h) { syncForm(); form.hue = Number(h); rerenderLayer(addLinkHTML()); },
+    'form-save': function () {
+      syncForm();
+      var name = form.name.trim(), url = form.url.trim();
+      if (!name) return formError('Add a name for the tile.', 'fld:name');
+      if (name.length > 40) return formError('Keep the name under 40 characters so it fits on the tile.', 'fld:name');
+      if (!url) return formError('Add the web address, for example quran.com.', 'fld:url');
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+      var u; try { u = new URL(url); } catch (e) { u = null; }
+      if (!u || !/^https?:$/.test(u.protocol) || u.hostname.indexOf('.') < 0) return formError('That address doesn\'t look right. Try something like example.org.', 'fld:url');
+      var item = { id: 'c' + Date.now().toString(36), cat: form.cat, kind: 'web', name: name, url: u.href, hue: form.hue, icon: 'link', custom: true };
+      state.custom.push(item); save();
+      closeLayer(); refreshAll();
+      toast('Added ' + name + ' to ' + catById(form.cat).name);
+    },
+    field: function (_, el) {
+      var inp = el.querySelector('input,textarea'); if (!inp) return;
+      inp.removeAttribute('tabindex'); inp.focus();
+      try { var n = inp.value.length; inp.setSelectionRange(n, n); } catch (e) {}
+    },
+    export: function () {
+      openLayer('<div class="dialog"><h2>Backup code</h2><p>Copy this code somewhere safe, or into “Restore from code” on another TV or browser. It contains your favourites, websites and settings — nothing else.</p>' +
+        '<div class="field f" data-act="field" data-fid="x:code" tabindex="0"><label for="in-code">Your code</label><textarea id="in-code" readonly tabindex="-1">' + esc(exportCode()) + '</textarea></div>' +
+        '<div class="actions"><button class="btn primary f" data-act="copy" data-fid="x:copy" data-autofocus>Copy code</button><button class="btn f" data-act="close" data-fid="x:close">Close</button></div></div>');
+    },
+    copy: function () {
+      var ta = $('#in-code'); var txt = ta ? ta.value : '';
+      var fallback = function () { if (ta) { ta.removeAttribute('tabindex'); ta.focus(); ta.select(); } toast('Code selected. Use your device\'s copy command.'); };
+      try { navigator.clipboard.writeText(txt).then(function () { toast('Backup code copied'); }, fallback); } catch (e) { fallback(); }
+    },
+    import: function () {
+      form = { code: '', err: '' };
+      openLayer(importHTML());
+    },
+    'import-apply': function () {
+      var inp = $('#in-code'); var raw = inp ? inp.value.trim() : '';
+      var data; try { data = JSON.parse(raw); } catch (e) { data = null; }
+      var clean = sanitise(data);
+      if (!data || !Object.keys(clean).length) { form.code = raw; form.err = 'That code could not be read. Paste the whole code, starting with { and ending with }.'; rerenderLayer(importHTML()); return; }
+      Object.assign(state, clean); save(); applyPrefs();
+      while (layers.length) closeLayer();
+      render(); toast('Settings restored');
+    },
+    reset: function () {
+      openLayer('<div class="dialog"><h2>Reset SUPER TV?</h2><p>This removes your websites, favourites and settings from this TV browser and brings back the starting layout. It cannot be undone.</p>' +
+        '<div class="actions"><button class="btn f" data-act="close" data-fid="r:cancel" data-autofocus>Keep my setup</button><button class="btn f" data-act="reset-yes" data-fid="r:yes">Reset everything</button></div></div>');
+    },
+    'reset-yes': function () {
+      state = clone(DEFAULTS); state.firstRunDone = true; save(); applyPrefs();
+      while (layers.length) closeLayer();
+      render(); setFocus(defaultFocus(), true); toast('SUPER TV has been reset');
+    }
+  };
+  function importHTML() {
+    return '<div class="dialog"><h2>Restore from code</h2><p>Paste a backup code from “Show backup code”. Your current setup will be replaced.</p>' +
+      '<div class="field f" data-act="field" data-fid="i:code" tabindex="0" data-autofocus><label for="in-code">Backup code — press OK to paste or type</label><textarea id="in-code" tabindex="-1">' + esc(form.code || '') + '</textarea></div>' +
+      '<p class="err" role="alert">' + esc(form.err || '') + '</p>' +
+      '<div class="actions"><button class="btn primary f" data-act="import-apply" data-fid="i:apply">Restore</button><button class="btn f" data-act="close" data-fid="i:cancel">Cancel</button></div></div>';
+  }
+  function moveCat(id, d) {
+    var o = state.catOrder, i = o.indexOf(id), j = i + d;
+    if (i < 0 || j < 0 || j >= o.length) return;
+    o.splice(i, 1); o.splice(j, 0, id); save(); refreshAll();
+  }
+  function syncForm() {
+    if (!form) return;
+    var n = $('#in-name'), u = $('#in-url');
+    if (n) form.name = n.value; if (u) form.url = u.value;
+  }
+  function formError(msg, fid) { form.err = msg; rerenderLayer(addLinkHTML()); restoreFocus(fid); }
+
+  /* ================= INPUT ================= */
+  var lastPointer = 0;
+  document.addEventListener('mousemove', function () { lastPointer = Date.now(); }, { passive: true });
+  document.addEventListener('mouseover', function (e) {
+    if (Date.now() - lastPointer > 200) return;
+    var el = e.target.closest && e.target.closest('.f');
+    if (el && activeRoot().contains(el) && document.activeElement !== el && !(document.activeElement && el.contains(document.activeElement))) {
+      try { el.focus({ preventScroll: true }); } catch (x) { el.focus(); }
+    }
+  });
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('.f');
+    if (!el) return;
+    if (!activeRoot().contains(el)) { e.preventDefault(); return; }
+    var act = el.getAttribute('data-act'); if (!act || !actions[act]) return;
+    if (act === 'field' && e.target.closest('input,textarea')) return;
+    var r = actions[act](el.getAttribute('data-arg'), el, e);
+    if (r !== 'default') e.preventDefault();
+  });
+
+  function leaveInput(inp) {
+    var w = inp.closest('.f'); inp.setAttribute('tabindex', '-1');
+    if (w) setFocus(w, true); else inp.blur();
+  }
+
+  var ignorePopUntil = 0;
+  function back() {
+    if (layers.length) {
+      var top = layers[layers.length - 1];
+      if (top.el.classList.contains('welcome')) { actions.start(); return true; }
+      closeLayer(); return true;
+    }
+    if (state.view !== 'home') { setView('home', true); return true; }
+    var heroBtn = $('[data-fid="hero:open"]');
+    var cur = currentF();
+    if (heroBtn && cur !== heroBtn) { setFocus(heroBtn); return true; }
+    return false;
+  }
+
+  var K = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, ENTER: 13, ESC: 27, BACKSPACE: 8, TIZEN_BACK: 10009, RED: 403, GREEN: 404, YELLOW: 405, BLUE: 406, PLAY: 415, PLAYPAUSE: 10252, MEDIA_PP: 179 };
+  document.addEventListener('keydown', function (e) {
+    var k = e.keyCode, t = e.target;
+    var inInput = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA');
+    if (inInput) {
+      if (k === K.ENTER && t.tagName === 'INPUT') { e.preventDefault(); leaveInput(t); return; }
+      if (k === K.ESC || k === K.TIZEN_BACK) { e.preventDefault(); ignorePopUntil = Date.now() + 400; leaveInput(t); return; }
+      if (k === K.UP || k === K.DOWN) { e.preventDefault(); leaveInput(t); move(k === K.UP ? 'up' : 'down'); return; }
+      return; // let typing, left/right caret movement through
+    }
+    var key = (e.key || '').toLowerCase();
+    var handled = true;
+    switch (k) {
+      case K.LEFT: move('left'); break;
+      case K.RIGHT: move('right'); break;
+      case K.UP: move('up'); break;
+      case K.DOWN: move('down'); break;
+      case K.ENTER: case K.PLAY: case K.PLAYPAUSE: case K.MEDIA_PP:
+        var c = currentF();
+        if (c) { if (!e.repeat) c.click(); } else setFocus(defaultFocus());
+        break;
+      case K.ESC: case K.BACKSPACE: case K.TIZEN_BACK:
+        ignorePopUntil = Date.now() + 400;
+        if (!back()) atHomeBack();
+        break;
+      case K.RED: favKey(); break;
+      case K.GREEN: openSettings(); break;
+      case K.YELLOW: openHelp(); break;
+      case K.BLUE: while (layers.length) closeLayer(); setView('home', false); setFocus($('[data-fid="hero:open"]') || defaultFocus()); break;
+      default:
+        handled = false;
+        if (e.ctrlKey || e.metaKey || e.altKey) break;
+        if (key === 'f') { favKey(); handled = true; }
+        else if (key === 's') { openSettings(); handled = true; }
+        else if (key === 'h' || key === '?') { openHelp(); handled = true; }
+    }
+    if (handled) e.preventDefault();
+  });
+  function atHomeBack() {
+    if (TIZEN) {
+      if (Date.now() - leaveArmed < 3000) { try { tizen.application.getCurrentApplication().exit(); } catch (e) {} return; }
+      leaveArmed = Date.now(); toast('Press Back again to close SUPER TV'); return;
+    }
+    toast('You are on the Home screen');
+  }
+  function favKey() {
+    var c = currentF();
+    var id = c && c.getAttribute('data-act') === 'open' ? c.getAttribute('data-arg') : null;
+    if (!id) { toast('Highlight a tile first, then press the red button'); return; }
+    var it = byId(id);
+    if (layers.length) return;
+    toggleFav(id); render(c.getAttribute('data-fid'));
+    if (it && !isFav(id) && c.getAttribute('data-group') === 'sec-fav') { /* tile left the row; focus moved by render */ }
+  }
+
+  // Samsung's browser often turns the remote's Back button into browser history navigation.
+  // A spare history entry lets Back close panels first instead of leaving SUPER TV.
+  // Only used when SUPER TV is the whole page (not inside a preview frame).
+  var leaveArmed = 0;
+  if (!framed && !TIZEN && window.history && history.pushState) {
+    try {
+      history.replaceState({ stv: 'base' }, '');
+      history.pushState({ stv: 'trap' }, '');
+      window.addEventListener('popstate', function () {
+        if (Date.now() < ignorePopUntil) { history.pushState({ stv: 'trap' }, ''); return; }
+        if (back()) { history.pushState({ stv: 'trap' }, ''); return; }
+        if (Date.now() - leaveArmed < 3000) { history.back(); return; }
+        leaveArmed = Date.now(); history.pushState({ stv: 'trap' }, '');
+        toast('Press Back again to leave SUPER TV');
+      });
+    } catch (e) {}
+  }
+
+  // Inside a properly packaged Tizen app these keys must be registered; in the browser this is skipped.
+  try {
+    if (window.tizen && tizen.tvinputdevice) {
+      tizen.tvinputdevice.registerKeyBatch(['ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue', 'MediaPlay', 'MediaPlayPause']);
+    }
+  } catch (e) {}
+  // Coming back from the Internet app or another app: refresh the clock and network state.
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { tick(true); updateNet(); } });
+
+  /* ================= CLOCK & NETWORK ================= */
+  var lastMin = -1;
+  var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function tick(force) {
+    var d = new Date(); var m = d.getHours() * 60 + d.getMinutes();
+    if (!force && m === lastMin) return; lastMin = m;
+    var h = d.getHours(), mm = ('0' + d.getMinutes()).slice(-2);
+    var t = state.clock24 ? ('0' + h).slice(-2) + ':' + mm : ((h % 12) || 12) + ':' + mm + (h < 12 ? ' am' : ' pm');
+    $('#clockT').textContent = t;
+    $('#clockD').textContent = DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
+    $('#greet').textContent = h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  }
+  function updateNet() {
+    var on = navigator.onLine !== false;
+    var n = $('#net'); n.classList.toggle('off', !on);
+    $('#netText').textContent = on ? 'Online' : 'Offline';
+    n.setAttribute('aria-label', on ? 'Network: online' : 'Network: offline');
+  }
+  window.addEventListener('online', function () { updateNet(); var f = currentFid(); renderMain(); restoreFocus(f); toast('Back online'); });
+  window.addEventListener('offline', function () { updateNet(); var f = currentFid(); renderMain(); restoreFocus(f); toast('Connection lost'); });
+  window.addEventListener('pageshow', function () { tick(true); updateNet(); });
+
+  /* ================= START ================= */
+  applyPrefs(); tick(true); updateNet();
+  setInterval(tick, 1000);
+  render(null);
+  restoreFocus(state.lastFocus || 'hero:open');
+  if (!state.firstRunDone) openLayer(welcomeHTML(), 'welcome');
+
+  // Expose a tiny hook for automated tests.
+  window.SUPERTV = { state: function () { return state; }, move: move, back: back };
+})();
+</script>
+
+</body>
+</html>
